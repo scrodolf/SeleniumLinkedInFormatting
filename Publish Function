@@ -1,10 +1,34 @@
-from selenium import webdriver
-from time import sleep
+"""Utility for saving formatted posts locally.
 
-def publish_to_linkedin(content: str):
-    driver = webdriver.Chrome()
-    page = LinkedInPage(driver)
-    page.login(LINKEDIN_USER, LINKEDIN_PASS)
-    page.publish_post(content)
-    sleep(5)   # let LinkedIn process it
-    driver.quit()
+The previous implementation logged into LinkedIn via Selenium and
+published the post directly.  To simplify usage and remove the need for
+credentials, the function now copies the post to the macOS clipboard and
+creates a text file named after the first paragraph of the post.
+"""
+
+import subprocess
+import re
+
+
+def save_post_locally(content: str) -> None:
+    """Copy ``content`` to the macOS clipboard and store it in a ``.txt`` file.
+
+    The name of the file is derived from the first paragraph of the post.
+    Any characters that are invalid in file names are stripped and the name
+    is truncated to avoid exceedingly long paths.
+    """
+
+    # Copy to the macOS clipboard using ``pbcopy``.
+    process = subprocess.Popen(
+        ["pbcopy"], env={"LANG": "en_US.UTF-8"}, stdin=subprocess.PIPE
+    )
+    process.communicate(content.encode("utf-8"))
+
+    # Determine the file name from the first paragraph of the content.
+    first_para = content.strip().split("\n\n")[0]
+    safe_name = re.sub(r"[\\/:*?\"<>|]", "", first_para)[:50]
+    filename = f"{safe_name}.txt"
+
+    with open(filename, "w", encoding="utf-8") as file:
+        file.write(content)
+
